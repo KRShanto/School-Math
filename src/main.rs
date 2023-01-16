@@ -18,7 +18,7 @@ Mid Point/Value -> মধ্যবিন্দু / মধ্যমান
 
 */
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 struct Data {
     only_numbers: Option<Vec<i32>>,
     frequency: Option<Vec<i32>>,
@@ -31,6 +31,7 @@ struct Data {
     mid_point: Option<Vec<f32>>,
     smallest: Option<i32>,
     largest: Option<i32>,
+    fixi: Option<Vec<f32>>,
 }
 
 fn main() {
@@ -43,19 +44,7 @@ fn main() {
 fn App() -> Html {
     let only_numbers = use_state(|| vec![]);
     let frequency_class_interval = use_state(|| None);
-    let data = use_state(|| Data {
-        only_numbers: None,
-        frequency: None,
-        class_interval: None,
-        class_interval_length: None,
-        discrete_class_interval: None,
-        class_interval_diff_length: None,
-        range: None,
-        cumulative_frequency: None,
-        mid_point: None,
-        smallest: None,
-        largest: None,
-    });
+    let data = use_state(|| Data::default());
     let show_output = use_state(|| false);
 
     {
@@ -164,10 +153,11 @@ fn ShowOutput() -> Html {
                 border: 3px solid yellow; padding: 5px;
                 ">
                     <th style="border: 3px solid yellow; padding: 5px;">{"শ্রেণী ব্যপ্তি"} </th>
-                    <th style="border: 3px solid yellow; padding: 5px;">{"গনসংখ্যা"} </th>
+                    <th style="border: 3px solid yellow; padding: 5px;">{"গনসংখ্যা (fi)"} </th>
                     <th style="border: 3px solid yellow; padding: 5px;">{"অবিচ্ছিন্ন শ্রেণীসীমা"}</th>
                     <th style="border: 3px solid yellow; padding: 5px;">{"ক্রমযোজিত গনসংখ্যা"}</th>
-                    <th style="border: 3px solid yellow; padding: 5px;">{"মধ্যমান"}</th>
+                    <th style="border: 3px solid yellow; padding: 5px;">{"মধ্যমান (xi)"}</th>
+                    <th style="border: 3px solid yellow; padding: 5px;">{"(fixi)"}</th>
                 </tr>
                 {
                     if let Some(class_interval_length) = data.class_interval_length.clone() {
@@ -181,6 +171,7 @@ fn ShowOutput() -> Html {
                                 <td style="border: 3px solid yellow; padding: 5px;">{format!("{} - {}", data.discrete_class_interval.clone().unwrap()[i].0, data.discrete_class_interval.clone().unwrap()[i].1)}</td>
                                 <td style="border: 3px solid yellow; padding: 5px;">{data.cumulative_frequency.clone().unwrap()[i]}</td>
                                 <td style="border: 3px solid yellow; padding: 5px;">{data.mid_point.clone().unwrap()[i]}</td>
+                                <td style="border: 3px solid yellow; padding: 5px;">{data.fixi.clone().unwrap()[i]}</td>
                                 </tr>
                             }
                         }).collect::<Html>()
@@ -214,6 +205,7 @@ fn get_data_using_only_numbers(only_numbers: Vec<i32>) -> Data {
     let frequency = find_frequency(only_numbers.clone(), class_interval.clone());
     let cumulative_frequency = find_cumulative_frequency(frequency.clone());
     let mid_points = find_mid_points(class_interval.clone());
+    let fixi = find_fixi(frequency.clone(), mid_points.clone());
 
     Data {
         only_numbers: Some(only_numbers),
@@ -227,6 +219,7 @@ fn get_data_using_only_numbers(only_numbers: Vec<i32>) -> Data {
         mid_point: Some(mid_points),
         smallest: Some(smallest),
         largest: Some(largest),
+        fixi: Some(fixi),
     }
 }
 
@@ -305,6 +298,14 @@ fn find_mid_points(class_interval: Vec<(i32, i32)>) -> Vec<f32> {
         mid_point.push((start + end) as f32 / 2.0);
     }
     mid_point
+}
+
+fn find_fixi(frequency: Vec<i32>, mid_points: Vec<f32>) -> Vec<f32> {
+    let mut fixi = vec![];
+    for (count, mid_point) in frequency.iter().zip(mid_points) {
+        fixi.push(*count as f32 * mid_point);
+    }
+    fixi
 }
 
 #[cfg(test)]
