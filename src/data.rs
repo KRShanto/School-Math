@@ -1,5 +1,19 @@
 use crate::find::*;
 
+/*
+English to Bangla
+
+Frequency -> গনসংখ্যা
+Class interval -> শ্রেণী ব্যপ্তি / শ্রেণী ব্যবধান
+Discrete class interval -> অবিচ্ছিন্ন শ্রেণীসীমা
+Tally -> ট্যালি
+Range -> পরিসর
+Cumulative frequency -> ক্রমযোজিত গনসংখ্যা
+Mid Point/Value -> মধ্যবিন্দু / মধ্যমান
+
+
+*/
+
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Data {
     pub only_numbers: Option<Vec<i32>>,
