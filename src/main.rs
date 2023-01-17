@@ -26,12 +26,20 @@ struct Data {
     class_interval_length: Option<i32>,
     class_interval_diff_length: Option<i32>,
     discrete_class_interval: Option<Vec<(f32, f32)>>,
-    range: Option<i32>,
+    range: Option<f32>,
     cumulative_frequency: Option<Vec<i32>>,
     mid_point: Option<Vec<f32>>,
     smallest: Option<i32>,
     largest: Option<i32>,
     fixi: Option<Vec<f32>>,
+    frequency_sum: Option<i32>,
+    fixi_sum: Option<f32>,
+    arithmetic_mean: Option<f32>,
+    step_deviations: Option<Vec<f32>>, // ui
+    a: Option<f32>,
+    fiui: Option<Vec<f32>>,
+    fiui_sum: Option<f32>,
+    short_cut_mean: Option<f32>,
 }
 
 fn main() {
@@ -133,12 +141,13 @@ fn ShowOutput() -> Html {
                 <p>{"শ্রেণী ব্যপ্তি: "}{format!("{:?}", data.class_interval.clone().unwrap())}</p>
                 <p>{"লাইন নাম্বার: "}{data.class_interval_length.unwrap()}</p>
                 <p>{"শ্রেণী ব্যবধান: "}{data.class_interval_diff_length.unwrap()}</p>
-
+                <p>{"গনসংখ্যাগুলার সমষ্টি: "}{data.frequency_sum.unwrap()}</p>
+                <p>{"fixi সমষ্টি: "}{data.fixi_sum.unwrap()}</p>
+                <p>{"গাণিতিক গড়: "}{data.arithmetic_mean.unwrap()}</p>
+                <p>{"সংক্ষিপ্ত গড়: "}{data.short_cut_mean.unwrap()}</p>
+                <p>{"a: "}{data.a.unwrap()}</p>
+                <p>{"fiui সমষ্টি: "}{data.fiui_sum.unwrap()}</p>
             }
-
-
-
-
                 // Make a table
                 <table style="
                     border-collapse: collapse;
@@ -158,6 +167,9 @@ fn ShowOutput() -> Html {
                     <th style="border: 3px solid yellow; padding: 5px;">{"ক্রমযোজিত গনসংখ্যা"}</th>
                     <th style="border: 3px solid yellow; padding: 5px;">{"মধ্যমান (xi)"}</th>
                     <th style="border: 3px solid yellow; padding: 5px;">{"(fixi)"}</th>
+                    <th style="border: 3px solid yellow; padding: 5px;">{"(fiui)"}</th>
+                    <th style="border: 3px solid yellow; padding: 5px;">{"(ui)"}</th>
+
                 </tr>
                 {
                     if let Some(class_interval_length) = data.class_interval_length.clone() {
@@ -172,6 +184,8 @@ fn ShowOutput() -> Html {
                                 <td style="border: 3px solid yellow; padding: 5px;">{data.cumulative_frequency.clone().unwrap()[i]}</td>
                                 <td style="border: 3px solid yellow; padding: 5px;">{data.mid_point.clone().unwrap()[i]}</td>
                                 <td style="border: 3px solid yellow; padding: 5px;">{data.fixi.clone().unwrap()[i]}</td>
+                                <td style="border: 3px solid yellow; padding: 5px;">{data.fiui.clone().unwrap()[i]}</td>
+                                <td style="border: 3px solid yellow; padding: 5px;">{data.step_deviations.clone().unwrap()[i]}</td>
                                 </tr>
                             }
                         }).collect::<Html>()
@@ -206,6 +220,15 @@ fn get_data_using_only_numbers(only_numbers: Vec<i32>) -> Data {
     let cumulative_frequency = find_cumulative_frequency(frequency.clone());
     let mid_points = find_mid_points(class_interval.clone());
     let fixi = find_fixi(frequency.clone(), mid_points.clone());
+    let frequency_sum = find_frequency_sum(frequency.clone());
+    let fixi_sum = find_fixi_sum(fixi.clone());
+    let arithmetic_mean = find_arithmetic_mean(frequency_sum, fixi_sum);
+    let a = find_a(frequency.clone(), mid_points.clone());
+    let step_deviations = find_step_deviations(a, mid_points.clone(), class_interval_diff_length);
+    let fiui = find_fiui(frequency.clone(), step_deviations.clone());
+    let fiui_sum = find_fiui_sum(fiui.clone());
+    let short_cut_mean =
+        find_short_cut_mean(a, fiui_sum, frequency_sum, class_interval_diff_length);
 
     Data {
         only_numbers: Some(only_numbers),
@@ -220,14 +243,23 @@ fn get_data_using_only_numbers(only_numbers: Vec<i32>) -> Data {
         smallest: Some(smallest),
         largest: Some(largest),
         fixi: Some(fixi),
+        frequency_sum: Some(frequency_sum),
+        fixi_sum: Some(fixi_sum),
+        arithmetic_mean: Some(arithmetic_mean),
+        a: Some(a),
+        step_deviations: Some(step_deviations),
+        fiui: Some(fiui),
+        fiui_sum: Some(fiui_sum),
+        short_cut_mean: Some(short_cut_mean),
+        // ..Default::default()
     }
 }
 
-fn find_range(smallest: i32, largest: i32) -> i32 {
-    (largest - smallest) + 1
+fn find_range(smallest: i32, largest: i32) -> f32 {
+    ((largest - smallest) + 1) as f32
 }
 
-fn find_class_interval_length(range: i32, class_interval_diff_length: i32) -> i32 {
+fn find_class_interval_length(range: f32, class_interval_diff_length: i32) -> i32 {
     // range / class_interval_diff_length
 
     // if there is a remainder, then add 1 to the result
@@ -245,7 +277,7 @@ fn find_class_interval(
     let mut class_interval = vec![];
     let mut start = smallest;
     let mut end = smallest + class_interval_diff_length - 1;
-    while end <= (largest + class_interval_diff_length) {
+    while end <= (largest + class_interval_diff_length - 1) {
         class_interval.push((start, end));
         start = end + 1;
         end = start + class_interval_diff_length - 1;
@@ -308,6 +340,108 @@ fn find_fixi(frequency: Vec<i32>, mid_points: Vec<f32>) -> Vec<f32> {
     fixi
 }
 
+fn find_frequency_sum(frequency: Vec<i32>) -> i32 {
+    let mut sum = 0;
+    for count in frequency {
+        sum += count;
+    }
+    sum
+}
+
+fn find_fixi_sum(fixi: Vec<f32>) -> f32 {
+    let mut sum = 0.0;
+    for count in fixi {
+        sum += count;
+    }
+    sum
+}
+
+fn find_arithmetic_mean(frequency_sum: i32, fixi_sum: f32) -> f32 {
+    fixi_sum / frequency_sum as f32
+}
+
+fn find_a(frequency: Vec<i32>, mid_points: Vec<f32>) -> f32 {
+    // find the largest frequency
+    // find the index of the largest frequency
+    // that index is the index of the mid point
+    // that mid point is the a
+
+    let mut largest_frequency = 0;
+    let mut largest_frequency_index = 0;
+
+    for (index, count) in frequency.iter().enumerate() {
+        if *count > largest_frequency {
+            largest_frequency = *count;
+            largest_frequency_index = index;
+        }
+    }
+
+    mid_points[largest_frequency_index]
+}
+
+fn find_step_deviations(a: f32, mid_points: Vec<f32>, class_interval_diff_length: i32) -> Vec<f32> {
+    // find the index of the a (in mid_points)
+    // that index will be 0 for the array
+    // then before that 0 there will be negative numbers like -1, -2, -3
+    // then after that 0 there will be positive numbers like 1, 2, 3
+    // -4, -3, -2, -1, 0, 1, 2, 3
+    //              // ^
+    //              // a
+
+    let mut step_deviations = vec![];
+
+    // let mut index = 0;
+    // for (i, mid_point) in mid_points.iter().enumerate() {
+    //     if *mid_point == a {
+    //         index = i;
+    //         break;
+    //     }
+    // }
+
+    // let mut i = index as i32;
+    // while i >= 0 {
+    //     step_deviations.push(-i);
+    //     i -= 1;
+    // }
+
+    // let mut i = 1;
+    // while i < index as i32 {
+    //     step_deviations.push(i);
+    //     i += 1;
+    // }
+
+    for mid_point in mid_points {
+        step_deviations.push(((mid_point - a) / (class_interval_diff_length - 1) as f32));
+    }
+
+    step_deviations
+}
+
+fn find_fiui(frequency: Vec<i32>, step_deviations: Vec<f32>) -> Vec<f32> {
+    let mut fiui = vec![];
+    for (count, step_deviation) in frequency.iter().zip(step_deviations) {
+        fiui.push(*count as f32 * step_deviation);
+    }
+    fiui
+}
+
+fn find_fiui_sum(fiui: Vec<f32>) -> f32 {
+    let mut sum = 0.0;
+    for count in fiui {
+        sum += count;
+    }
+    sum
+}
+
+fn find_short_cut_mean(
+    a: f32,
+    fiui_sum: f32,
+    frequency_sum: i32,
+    class_interval_diff_length: i32,
+) -> f32 {
+    a + (fiui_sum / frequency_sum as f32) * (class_interval_diff_length - 1) as f32
+}
+
 #[cfg(test)]
 mod tester {
     use super::*;
@@ -317,16 +451,16 @@ mod tester {
         let smallest = 35;
         let largest = 90;
         let range = find_range(smallest, largest);
-        assert_eq!(range, 56);
+        assert_eq!(range, 56.);
     }
 
     #[test]
     fn test_find_class_interval() {
-        let smallest = 1;
-        let largest = 20;
-        let class_interval_length = 5;
+        let smallest = 6;
+        let largest = 14;
+        let class_interval_length = 3;
         let class_interval = find_class_interval(smallest, largest, class_interval_length);
-        assert_eq!(class_interval, vec![(1, 5), (6, 10), (11, 15), (16, 20)]);
+        assert_eq!(class_interval, vec![(6, 8), (9, 11), (12, 14),]);
     }
 
     #[test]
@@ -384,6 +518,84 @@ mod tester {
         let class_interval = vec![(46, 50), (51, 55), (56, 60), (61, 65), (66, 70)];
         let mid_points = find_mid_points(class_interval);
         assert_eq!(mid_points, vec![48.0, 53.0, 58.0, 63.0, 68.0]);
+    }
+
+    #[test]
+    fn test_find_fixi() {
+        let frequency = vec![5, 10, 15, 20, 30, 16, 4];
+        let mid_points = vec![29.5, 39.5, 49.5, 59.5, 69.5, 79.5, 89.5];
+
+        let fixi = find_fixi(frequency, mid_points);
+
+        assert_eq!(
+            fixi,
+            vec![147.5, 395.0, 742.5, 1190.0, 2085.0, 1272.0, 358.0]
+        );
+    }
+
+    #[test]
+    fn test_find_frequency_sum() {
+        let frequency = vec![5, 10, 15, 20, 30, 16, 4];
+        let frequency_sum = find_frequency_sum(frequency);
+        assert_eq!(frequency_sum, 100);
+    }
+
+    #[test]
+    fn test_find_fixi_sum() {
+        let fixi = vec![147.5, 395.0, 742.5, 1190.0, 2085.0, 1272.0, 358.0];
+        let fixi_sum = find_fixi_sum(fixi);
+        assert_eq!(fixi_sum, 6190.0);
+    }
+
+    #[test]
+    fn test_find_arithmetic_mean() {
+        let frequency_sum = 100;
+        let fixi_sum = 6190.0;
+        let arithmetic_mean = find_arithmetic_mean(frequency_sum, fixi_sum);
+        assert_eq!(arithmetic_mean, 61.9);
+    }
+
+    #[test]
+    fn test_find_a() {
+        let mid_points = vec![4., 8., 12., 16., 20., 24., 28., 32.];
+        let frequency = vec![1, 9, 21, 47, 52, 36, 19, 3];
+        let a = find_a(frequency, mid_points);
+        assert_eq!(a, 20 as f32);
+    }
+
+    #[test]
+    fn test_find_step_deviations() {
+        let mid_points = vec![4., 8., 12., 16., 20., 24., 28., 32.];
+        let a = 20 as f32;
+        let class_interval_diff_length = 5;
+        let step_deviations = find_step_deviations(a, mid_points, class_interval_diff_length);
+        assert_eq!(step_deviations, vec![-4., -3., -2., -1., 0., 1., 2., 3.]);
+    }
+
+    #[test]
+    fn test_find_fiui() {
+        let frequency = vec![1, 9, 21, 47, 52, 36, 19, 3];
+        let step_deviations = vec![-4., -3., -2., -1., 0., 1., 2., 3.];
+        let fiui = find_fiui(frequency, step_deviations);
+        assert_eq!(fiui, vec![-4., -27., -42., -47., 0., 36., 38., 9.]);
+    }
+
+    #[test]
+    fn test_find_fiui_sum() {
+        let fiui = vec![-4., -27., -42., -47., 0., 36., 38., 9.];
+        let fiui_sum = find_fiui_sum(fiui);
+        assert_eq!(fiui_sum, -37.0);
+    }
+
+    #[test]
+    fn test_find_short_cut_mean() {
+        let fiui_sum = -37.;
+        let frequency_sum = 188;
+        let class_interval_diff_length = 5;
+        let a = 20 as f32;
+        let short_cut_mean =
+            find_short_cut_mean(a, fiui_sum, frequency_sum, class_interval_diff_length);
+        assert_eq!(short_cut_mean, 19.212767);
     }
 }
 
