@@ -25,8 +25,6 @@ Mid Point/Value -> মধ্যবিন্দু / মধ্যমান
 
 fn main() {
     yew::Renderer::<App>::new().render();
-    // let num: i32 = 55 / 2;
-    // println!("{}", num);
 }
 
 #[function_component]
@@ -42,7 +40,7 @@ fn App() -> Html {
         use_effect_with_deps(
             move |only_numbers| {
                 if !only_numbers.is_empty() {
-                    let data_using_numbers = get_data_using_only_numbers((**only_numbers).clone());
+                    let data_using_numbers = Data::new_using_only_numbers((**only_numbers).clone());
                     data.set(data_using_numbers);
                 }
 
@@ -106,8 +104,6 @@ fn TakeInput() -> Html {
 
 #[function_component]
 fn ShowOutput() -> Html {
-    // let ShowOutputProps { only_numbers } = props;
-    // let only_numbers = use_context::<UseStateHandle<Vec<i32>>>().unwrap();
     let data = use_context::<UseStateHandle<Data>>().unwrap();
 
     html! {
