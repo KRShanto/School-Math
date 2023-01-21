@@ -12,7 +12,7 @@ fn test_find_short_cut_mean() {
     let fiui_sum = -37.;
     let frequency_sum = 188;
     let class_interval_diff_length = 5;
-    let a = 20 as f32;
+    let a = 20_f32;
     let short_cut_mean =
         find_short_cut_mean(a, fiui_sum, frequency_sum, class_interval_diff_length);
     assert_eq!(short_cut_mean, 19.212767);

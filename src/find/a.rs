@@ -22,5 +22,5 @@ fn test_find_a() {
     let mid_points = vec![4., 8., 12., 16., 20., 24., 28., 32.];
     let frequency = vec![1, 9, 21, 47, 52, 36, 19, 3];
     let a = find_a(frequency, mid_points);
-    assert_eq!(a, 20 as f32);
+    assert_eq!(a, 20_f32);
 }
